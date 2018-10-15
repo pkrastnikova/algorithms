@@ -1,4 +1,0 @@
-Assignment: WordNet
-Course: Algorithms Part 2
-Theory: Graphs
-
