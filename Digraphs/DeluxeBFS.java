@@ -1,14 +1,19 @@
+/**
+ * Custom BFS class for search in a DAG (Directed Acyclic Graph)
+ * Computes the shortest path from two single sources s and t or from two sets of sources s and t 
+ * to every other vertex in the graph
+ * Dependencies: Digraph.java, Queue.java, Stack.java
+ * @param G the digraph
+ * @author pkrastnikova 
+ */
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.Set;
 import java.util.TreeSet;
-
 import edu.princeton.cs.algs4.Digraph;
 import edu.princeton.cs.algs4.In;
 import edu.princeton.cs.algs4.Queue;
-import edu.princeton.cs.algs4.SET;
 import edu.princeton.cs.algs4.Stack;
-import edu.princeton.cs.algs4.StdOut;
 
 public class DeluxeBFS {
 
@@ -19,22 +24,11 @@ public class DeluxeBFS {
 	private boolean[] marked2; // marked[v] = is there an t->v path?
 	private int[] edgeTo2; // edgeTo[v] = last edge on shortest t->v path
 	private int[] distTo2; // distTo[v] = length of shortest t->v path
-	private Set<Integer> changes1; // track updated notes for source s
-	private Set<Integer> changes2; // track updated notes for source t
+	private Set<Integer> changes1; // track updated nodes for source s
+	private Set<Integer> changes2; // track updated nodes for source t
 	private int minDist;
 	private int commonAncestor;
 
-	/**
-	 * Computes the shortest path from {@code s} and every other vertex in graph
-	 * {@code G}.
-	 * 
-	 * @param G
-	 *            the digraph
-	 * @param s
-	 *            the source vertex
-	 * @throws IllegalArgumentException
-	 *             unless {@code 0 <= v < V}
-	 */
 	public DeluxeBFS(Digraph G) {
 		marked1 = new boolean[G.V()];
 		distTo1 = new int[G.V()];
@@ -50,27 +44,31 @@ public class DeluxeBFS {
 		}
 		changes1 = new HashSet<Integer>();
 		changes2 = new HashSet<Integer>();
-
 	}
 
-	
-
+	/**
+	 * @return common ancestor from the shortest ancestral path; -1 if no such path
+	 */
 	public int commonAncestor() {
 		return this.commonAncestor;
 	}
 
+	/**
+	 * @return the length of the shortest ancestral path; -1 if no such path
+	 */
 	public int minDist() {
 		if (this.commonAncestor == -1)
 			this.minDist = -1;
 		return this.minDist;
 	}
 	
-	// reset the three arrays for s and t only for changed items
-	// => do not need to initialize the whole arrays for every new search
+	/**
+	 * resets only updated elements from last search in the three help arrays for s and t
+	 * => do not need to re-initialize the whole arrays for every new search
+	 */
 	private void resetValues() {
 		if (changes1.isEmpty() && changes2.isEmpty())
 			return;
-
 		for (int i1 : changes1) {
 			// System.out.println("i1: " + i1);
 			marked1[i1] = false;
@@ -79,22 +77,26 @@ public class DeluxeBFS {
 
 		}
 		changes1.clear();
-
 		for (int i2 : changes2) {
 			// System.out.println("i2:" + i2);
 			marked2[i2] = false;
 			distTo2[i2] = INFINITY;
 			edgeTo2[i2] = 0;
-
 		}
 		changes2.clear();
-
 		this.minDist = INFINITY;
 		this.commonAncestor = -1;
-
 	}
 
-	// BFS from 2 single sources
+	/**
+	 * Performs BFS from 2 single sources to every other vertex in the graph
+	 * Sets corresponding entries in the help arrays (makred[] and distTo[])
+	 * Finds common ancestor and the length of the shortest path
+	 * BFS is performed in a lockstep (in parallel from s and t) 
+	 * @param G the digraph
+	 * @param s first source vertex
+	 * @param t second source vertex
+	 */
 	public void bfs(Digraph G, int s, int t) {
 		validateVertex(s);
 		validateVertex(t);
@@ -107,7 +109,6 @@ public class DeluxeBFS {
 			return;
 		}
 		
-
 		Queue<Integer> q = new Queue<Integer>();
 		Queue<Integer> h = new Queue<Integer>();
 
@@ -119,8 +120,8 @@ public class DeluxeBFS {
 		distTo2[t] = 0;
 		q.enqueue(s);
 		q.enqueue(t);
-		h.enqueue(1);
-		h.enqueue(2);
+		h.enqueue(1); // adds 1 when adding vertex from the s path
+		h.enqueue(2); // adds 2 when adding vertex from the t path
 
 		while (!q.isEmpty()) {
 
@@ -171,8 +172,13 @@ public class DeluxeBFS {
 		}
 	}
 
-	// BFS from multiple sources - try 1 (slower)
-	// put in the queue all nodes from sA and then all nodes from sB
+	/**
+	 * Performs BFS from two sets of sources - try 1 (slower)
+	 * put in the queue all nodes from sA and then all nodes from sB
+	 * @param G the digraph
+	 * @param sA first set of sources
+	 * @param sB second set of sources
+	 */
 	public void bfs(Digraph G, Iterable<Integer> sA, Iterable<Integer> sB) {
 		validateVertices(sA);
 		validateVertices(sB);
@@ -241,8 +247,13 @@ public class DeluxeBFS {
 			}
 		}
 	}
-	// BFS from multiple sources - try 2
-	// put in the queue nodes alternating between sA and sB - one from sA, one from sB ...
+	    /**
+	     * Performs BFS from multiple sources - try 2 (much faster)
+	     * put in the queue nodes alternating between sA and sB - one from sA, one from sB ...
+	     * @param G the digraph
+	     * @param sA first set of sources
+	     * @param sB second set of sources
+	     */
 		public void bfs1(Digraph G, Iterable<Integer> sA, Iterable<Integer> sB) {
 			validateVertices(sA);
 			validateVertices(sB);
@@ -252,6 +263,8 @@ public class DeluxeBFS {
 			Queue<Integer> q = new Queue<Integer>();
 			Queue<Integer> h = new Queue<Integer>();
 			//System.out.println();
+			
+			// put all sources on the queue alternating between sA and sB
 			while (itA.hasNext() || itB.hasNext()) {
 				if (itA.hasNext())
 					{int s = itA.next();
@@ -328,14 +341,10 @@ public class DeluxeBFS {
 			}
 		}
 	/**
-	 * Is there a directed path from the source {@code s} (or sources) to vertex
-	 * {@code v}?
-	 * 
-	 * @param v
-	 *            the vertex
+	 * Is there a directed path from the source {@code s} (or sources) to vertex {@code v}?
+	 * @param v the vertex
 	 * @return {@code true} if there is a directed path, {@code false} otherwise
-	 * @throws IllegalArgumentException
-	 *             unless {@code 0 <= v < V}
+	 * @throws IllegalArgumentException unless {@code 0 <= v < V}
 	 */
 	// not used
 		public boolean hasPathTo(int v) {
@@ -346,12 +355,9 @@ public class DeluxeBFS {
 	/**
 	 * Returns the number of edges in a shortest path from the source {@code s}
 	 * (or sources) to vertex {@code v}?
-	 * 
-	 * @param v
-	 *            the vertex
+	 * @param v the vertex
 	 * @return the number of edges in a shortest path
-	 * @throws IllegalArgumentException
-	 *             unless {@code 0 <= v < V}
+	 * @throws IllegalArgumentException unless {@code 0 <= v < V}
 	 */
 	// not used	
 	public int distTo(int v) {
@@ -360,19 +366,15 @@ public class DeluxeBFS {
 	}
 
 	/**
-	 * Returns a shortest path from {@code s} (or sources) to {@code v}, or
-	 * {@code null} if no such path.
-	 * 
-	 * @param v
-	 *            the vertex
-	 * @return the sequence of vertices on a shortest path, as an Iterable
-	 * @throws IllegalArgumentException
-	 *             unless {@code 0 <= v < V}
+	 * Returns the shortest path from {@code s} (or sources) to {@code v}, or
+	 * {@code null} if no such path
+	 * @param v the vertex
+	 * @return the sequence of vertices on the shortest path as an Iterable
+	 * @throws IllegalArgumentException unless {@code 0 <= v < V}
 	 */
 	// not used
 	public Iterable<Integer> pathTo(int v) {
 		validateVertex(v);
-
 		if (!hasPathTo(v))
 			return null;
 		Stack<Integer> path = new Stack<Integer>();
@@ -406,10 +408,8 @@ public class DeluxeBFS {
 	}
 
 	/**
-	 * Unit tests the {@code BreadthFirstDirectedPaths} data type.
-	 *
-	 * @param args
-	 *            the command-line arguments
+	 * Unit tests the {@code DeluxeBFS} data type.
+	 * @param args the command-line arguments
 	 */
 	public static void main(String[] args) {
 		In in = new In(args[0]);
